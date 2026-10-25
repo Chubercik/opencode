@@ -75,6 +75,17 @@ test("resolves nested config and keybind defaults", () => {
   expect(config.session.tps).toBe(true)
 })
 
+test("always resolves a cursor style so config reloads cannot clear it", () => {
+  const options = { terminalSuspend: true, environment: {} }
+
+  expect(resolve({}, options).cursor).toEqual({ style: "block", blinking: true })
+  expect(resolve({ cursor: { style: "line" } }, options).cursor).toEqual({ style: "line", blinking: true })
+  expect(resolve({ cursor: { style: "underline", blinking: false } }, options).cursor).toEqual({
+    style: "underline",
+    blinking: false,
+  })
+})
+
 test("resolves automatic tabs from the terminal environment", () => {
   expect(resolve({}, { terminalSuspend: true, environment: {} }).tabs.enabled).toBe(true)
   expect(resolve({}, { terminalSuspend: true, environment: { HERDR_ENV: "1" } }).tabs.enabled).toBe(false)
