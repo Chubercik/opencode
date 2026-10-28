@@ -98,7 +98,7 @@ test("uses all available routes but skips the process host remotely", async () =
     }),
   )
 
-  expect(await clipboard.write("hello")).toBeUndefined()
+  expect(await clipboard.write("hello")).toBe("attempted")
   expect(writes).toEqual({ host: 0, terminal: 1 })
 })
 
@@ -110,8 +110,8 @@ test("removes NUL characters before writing", async () => {
     }),
   )
 
-  expect(await clipboard.write("before\0after")).toBeUndefined()
-  expect(await clipboard.write("clean")).toBeUndefined()
+  expect(await clipboard.write("before\0after")).toBe("copied")
+  expect(await clipboard.write("clean")).toBe("copied")
   expect(writes).toEqual(["beforeafter", "clean"])
 })
 
@@ -136,7 +136,46 @@ test("rejects only when no clipboard route accepted the write", async () => {
     }),
   )
 
-  expect(await fallback.write("hello")).toBeUndefined()
+  expect(await fallback.write("hello")).toBe("copied")
   expect(await clipboard.write("hello").then(undefined, (error) => error)).toBe(failure)
   expect(writes).toEqual([["hello", { destination: "all-available", selection: "clipboard" }]])
+})
+
+test("reports an unverified terminal write when the host clipboard is unavailable", async () => {
+  const clipboard = createClipboardAdapter(
+    coreClipboard({
+      write: {
+        host: { status: "unsupported" },
+        terminal: { status: "attempted", capability: "unknown" },
+      },
+    }),
+  )
+
+  expect(await clipboard.write("hello")).toBe("attempted")
+})
+
+test("reports an unverified terminal write when the host clipboard fails", async () => {
+  const clipboard = createClipboardAdapter(
+    coreClipboard({
+      write: {
+        host: { status: "failed", error: new Error("native clipboard failed") },
+        terminal: { status: "attempted", capability: "unknown" },
+      },
+    }),
+  )
+
+  expect(await clipboard.write("hello")).toBe("attempted")
+})
+
+test("prefers a verified host write over an unverified terminal attempt", async () => {
+  const clipboard = createClipboardAdapter(
+    coreClipboard({
+      write: {
+        host: { status: "written" },
+        terminal: { status: "attempted", capability: "unknown" },
+      },
+    }),
+  )
+
+  expect(await clipboard.write("hello")).toBe("copied")
 })
