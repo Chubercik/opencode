@@ -57,7 +57,9 @@ export function createClipboardAdapter(clipboard: CoreClipboardService): OwnedCl
         selection: "clipboard",
       })
       if (result.host.status === "written") return "copied"
-      if (result.terminal.status === "attempted") return "attempted"
+      if (result.terminal.status === "attempted") {
+        return result.terminal.capability === "supported" ? "copied" : "attempted"
+      }
       if (result.host.status === "failed") throw result.host.error
       throw new Error(`Clipboard write failed (host: ${result.host.status}, terminal: ${result.terminal.status})`)
     },

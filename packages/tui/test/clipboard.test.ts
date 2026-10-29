@@ -67,6 +67,7 @@ test("adapts OpenTUI image and text reads", async () => {
 })
 
 test("uses all available routes but skips the process host remotely", async () => {
+  // Remote sessions cannot reach the process host clipboard, so a supported terminal write is the verified route.
   const writes = { host: 0, terminal: 0 }
   const host: HostClipboardService = {
     maxWriteBytes: 8 * 1024 * 1024,
@@ -98,7 +99,7 @@ test("uses all available routes but skips the process host remotely", async () =
     }),
   )
 
-  expect(await clipboard.write("hello")).toBe("attempted")
+  expect(await clipboard.write("hello")).toBe("copied")
   expect(writes).toEqual({ host: 0, terminal: 1 })
 })
 
@@ -159,12 +160,25 @@ test("reports an unverified terminal write when the host clipboard fails", async
     coreClipboard({
       write: {
         host: { status: "failed", error: new Error("native clipboard failed") },
-        terminal: { status: "attempted", capability: "unknown" },
+        terminal: { status: "attempted", capability: "unsupported" },
       },
     }),
   )
 
   expect(await clipboard.write("hello")).toBe("attempted")
+})
+
+test("treats a supported terminal write as copied when the host clipboard is unavailable", async () => {
+  const clipboard = createClipboardAdapter(
+    coreClipboard({
+      write: {
+        host: { status: "unsupported" },
+        terminal: { status: "attempted", capability: "supported" },
+      },
+    }),
+  )
+
+  expect(await clipboard.write("hello")).toBe("copied")
 })
 
 test("prefers a verified host write over an unverified terminal attempt", async () => {
